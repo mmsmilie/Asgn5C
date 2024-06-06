@@ -10,7 +10,7 @@ const Tree2 = "./objects/Tree2.glb";
 const Tree3 = "./objects/Tree3.glb";
 const SheepTex = "./animals/Sheep.glb";
 
-let sheep, sheepMixer;
+let player, sheepMixer;
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
 let walkAction, idleAction, activeAction, previousAction;
 
@@ -34,8 +34,9 @@ function main() {
     const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
     camera.position.set(0, 4, 4);
 
+    // Controls
     const controls = new OrbitControls(camera, canvas);
-    controls.target.set(0, 0.5, 0);
+    controls.target.set(0, 2, 0);
     controls.update();
 
     // Added grass plane
@@ -162,12 +163,12 @@ function main() {
 
     const loader = new GLTFLoader();
     loader.load(SheepTex, function (gltf) {
-        sheep = gltf.scene;
-        sheep.scale.set(0.5, 0.5, 0.5);
-        scene.add(sheep);
+        player = gltf.scene;
+        player.scale.set(0.5, 0.5, 0.5);
+        scene.add(player);
 
         // Set up animation mixer
-        sheepMixer = new THREE.AnimationMixer(sheep);
+        sheepMixer = new THREE.AnimationMixer(player);
         const animations = gltf.animations;
 
         // Assuming index 0 is idle and index 1 is walk (adjust as necessary)
@@ -180,7 +181,6 @@ function main() {
         activeAction.play();
 
     });
-
 
     // Key event listeners
     document.addEventListener('keydown', onKeyDown, false);
@@ -255,15 +255,15 @@ function main() {
             camera.updateProjectionMatrix();
         }
 
-        if (sheep) {
-            // Update sheep position
+        if (player) {
+            // Update player position
             const speed = 2.0;
-            if (moveForward) sheep.position.z -= speed * delta;
-            if (moveBackward) sheep.position.z += speed * delta;
-            if (moveLeft) sheep.position.x -= speed * delta;
-            if (moveRight) sheep.position.x += speed * delta;
+            if (moveForward) player.position.z -= speed * delta;
+            if (moveBackward) player.position.z += speed * delta;
+            if (moveLeft) player.position.x -= speed * delta;
+            if (moveRight) player.position.x += speed * delta;
     
-            // Update sheep rotation
+            // Update player rotation
             if (moveForward || moveBackward || moveLeft || moveRight) {
                 const direction = new THREE.Vector3();
                 direction.set(
@@ -273,21 +273,27 @@ function main() {
                 ).normalize();
     
                 if (direction.length() > 0) {
-                    sheep.rotation.y = Math.atan2(direction.x, direction.z);
+                    player.rotation.y = Math.atan2(direction.x, direction.z);
                 }
             }
     
             // Switch between walking and idle animations
             if (!moveForward && !moveBackward && !moveLeft && !moveRight) {
                 setAction(idleAction);
+                controls.target.set(player.position.x, player.position.y, player.position.z);
+                controls.update();
             } else {
                 setAction(walkAction);
+                const relativeCameraOffset = new THREE.Vector3(0, 5, -10);
+                const cameraOffset = relativeCameraOffset.applyMatrix4(player.matrixWorld);
+                camera.position.lerp(cameraOffset, 0.1);
+                camera.lookAt(player.position);
             }
     
             // Update animation
             if (sheepMixer) sheepMixer.update(delta);
 
-            controls.target.set(sheep.position.x, sheep.position.y, sheep.position.z);
+ 
         }
         
         // Animate sun and moon
